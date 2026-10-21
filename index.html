@@ -1003,11 +1003,22 @@ body{color:#fffdf8!important;background:#050505!important}
                 .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
                 .addView(view)
                 .addView(new google.picker.DocsUploadView().setIncludeFolders(false));
-            builder.build().setVisible(true);
+
+            // El selector de Drive debe quedar visible por encima del formulario.
+            // Guardamos el estado del formulario y lo ocultamos mientras Drive está abierto.
+            window._novedadModalVisibleAntesDeDrive = modal.style.display === 'flex';
+            modal.style.display = 'none';
+            const picker = builder.build();
+            picker.setVisible(true);
+            window._novedadesDrivePicker = picker;
         };
         googleTokenClient.callback = (response) => {
             if (response && response.error) {
                 console.error('OAuth Drive:', response);
+                if (window._novedadModalVisibleAntesDeDrive) {
+                    modal.style.display = 'flex';
+                    window._novedadModalVisibleAntesDeDrive = false;
+                }
                 alert('No se pudo autorizar Google Drive. Revisá que tu cuenta esté agregada como usuario de prueba y que el permiso drive.file esté configurado.');
                 return;
             }
@@ -1018,6 +1029,12 @@ body{color:#fffdf8!important;background:#050505!important}
     }
     window.abrirSelectorDrive = crearPicker;
     window.procesarSeleccionDrive = function(data) {
+        // Al elegir archivos o cerrar el selector, volvemos al formulario sin perder lo cargado.
+        if (window._novedadModalVisibleAntesDeDrive) {
+            modal.style.display = 'flex';
+            window._novedadModalVisibleAntesDeDrive = false;
+        }
+        window._novedadesDrivePicker = null;
         if (!data || data.action !== google.picker.Action.PICKED) return;
         const docs = data[google.picker.Response.DOCUMENTS] || [];
         const limite = 2 - currentAttachments.length - pendingDriveAttachments.length;
